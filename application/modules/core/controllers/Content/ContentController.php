@@ -163,7 +163,6 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 	 * Saves a new content or updates a content
 	 */
 	public function saveAction(){
-
 		// translate library
 		$lang = Zend_Registry::get ( 'Zend_Translate' );		
 		
@@ -178,7 +177,14 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 		if ($this->getRequest ()->isPost ()) 
 		{			
 			$formData = $this->_request->getPost ();
-			
+                        $position_post=strpos($formData['watermark_position'], ',');
+                        $formData['watermark_position']= substr($formData['watermark_position'],0,$position_post);
+                        //$formData['watermark_position']= ($formData['id'])?substr($formData['watermark_position'],0, -2):substr($formData['watermark_position'],0, -1);
+//                        echo '<pre>';
+//                        print_r($formData);
+//                        echo '</pre>';
+//                        die(); 
+//			
 			$field = new Core_Model_Field ();
 			$get_fields = $field->find ( 'wc_field', array ('content_type_id' => $formData ['content_type_id']) );
 			if (! $get_fields ) {
@@ -426,21 +432,61 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 				}
 			}
 			else
+                            
 			{
+                            //multiple images upload
+                             $imagesArray = array('1'=>1);
+                             $multipleId = array();
+                             $current_section = new Core_Model_Section();
+                             $current_section_obj = $current_section->find('wc_section', array('id'=>$formData['section_id']));
+                            if($formData['content_type_id']==2){
+                                $uploads_dir = APPLICATION_PATH . "/../public/uploads/tmp/";
+                                $imagesArray = array();
+                                if(count($_FILES["Filedata"]["error"]) < 2) {
+                                    // Single file
+                                    //$tmp_name = $_FILES["Filedata"]["tmp_name"];
+                                    $name = $_FILES["Filedata"]["name"];
+                                    array_push($imagesArray, $name);
+                                    
+                                } else {
+                                    if($_FILES["Filedata"]["error"])	
+                                    foreach ($_FILES["Filedata"]["error"] as $key => $error) {
+                                            if ($error == UPLOAD_ERR_OK) {
+                                                    //$tmp_name = $_FILES["Filedata"]["tmp_name"][$key];
+                                                    $name = $_FILES["Filedata"]["name"][$key];
+                                                    //$namenew.= $name.',';
+                                                    array_push($imagesArray, $name);
+
+                                                    }
+                                            }
+                                    }
+                            }
+                                    
+                                 //begin foreach
+                               foreach ($imagesArray as $key=>$value){                            
 				//INSERT
 				//content
 				$content = new Core_Model_Content ();
 				$content_obj = $content->getNewRow ( 'wc_content' );
 				$content_obj->content_type_id = $formData ['content_type_id'];
 				$content_obj->website_id = $session_id->website_id;
-				$content_obj->internal_name = GlobalFunctions::value_cleaner ( $formData ['internal_name'] );
-				$content_obj->title = GlobalFunctions::value_cleaner ( $formData ['title'] );
+                                if (count($imagesArray)>1){
+				   $content_obj->internal_name = GlobalFunctions::value_cleaner 
+                                           (str_replace ( ' ', '_', strtolower ( $current_section_obj[0]->internal_name ) ).
+                                           '_'.$formData ['internal_name'].'_'.$key );
+                                } else {
+                                   $content_obj->internal_name = GlobalFunctions::value_cleaner ( $formData ['internal_name']);    
+                                }
+                                $content_obj->title = GlobalFunctions::value_cleaner ( $formData ['title'] );
 				$content_obj->created_by = $session_id->user_id;
 				$content_obj->creation_date = date ( 'Y-m-d h%i%s' );
 				$content_obj->approved = $formData ['approved'];
 				$content_obj->status = 'active';				
 				// Save data
 				$id = $content->save ( 'wc_content', $content_obj );
+                                if (count($imagesArray)>1){
+                                    array_push($multipleId, $id);   
+                                }
 				$is_temp = false;				
 				
 				//content_by_section
@@ -581,31 +627,132 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 						}
 					}
 				}
+                             }
+                                //end foreach
 			}
+                        
+                        //foreach ($imagesArray as $key){ 
 			
 			if (! is_dir ( APPLICATION_PATH . '/../public/uploads/content/' )) {
 				$path = APPLICATION_PATH . '/../public/uploads/content/';
-				mkdir ( $path );
-				chmod ( $path, 0777 );
+                                if (!mkdir($path, 0777, true)) {
+                                    die('Failed to create folders...');
+                                }
+//				mkdir ( $path );
+//				chmod ( $path, 0777 );
 			}
 	
 			if (! is_dir ( APPLICATION_PATH . '/../public/uploads/content/' . date ( 'Y' ) )) {
 				$path = APPLICATION_PATH . '/../public/uploads/content/' . date ( 'Y' );
-				mkdir ( $path );
-				chmod ( $path, 0777 );
+				if (!mkdir($path, 0777, true)) {
+                                    die('Failed to create folders...');
+                                }
 			}
 	
 			if (! is_dir ( APPLICATION_PATH . '/../public/uploads/content/' . date ( 'Y' ) . '/' . date ( 'm' ) )) {
 				$path = APPLICATION_PATH . '/../public/uploads/content/' . date ( 'Y' ) . '/' . date ( 'm' );
-				mkdir ( $path );
-				chmod ( $path, 0777 );
+				if (!mkdir($path, 0777, true)) {
+                                    die('Failed to create folders...');
+                                }
 			}
 			if($formData['id']){
 				$array_foreach = $data_content_field;
 			}else{
 				$array_foreach = $get_fields;
 			}
+                        
+                 //for multiple images FIELDS 2,3,4,5,6,7,8,9, 36, 37
+                if(count($imagesArray)>1){
+                    $content_field = new Core_Model_ContentField ();                              
+                    $picture_foot = $formData['picture_foot']; //2
+                    $description = $formData['description']; //3
+                    $target = $formData['target']; //4
+                    $link = $formData['link'];//5
+                    //$image_path;//6                    
+                    $format = $formData['format']; //7
+                    $save_image;//8
+                    $resizeimg = $formData['resizeimg']; //9  
+                    $watermark = $formData['watermarkimg']; //36 
+                    $watermarkposition = $formData['watermark_position']; //37 
+                        if($_FILES["Filedata"]["error"])	
+                        foreach ($_FILES["Filedata"]["error"] as $key => $error) {
+                                if ($error == UPLOAD_ERR_OK) {
+                                        $tmp_name = $_FILES["Filedata"]["tmp_name"][$key];
+                                        $name = $_FILES["Filedata"]["name"][$key];
+                                        $ext = substr(strrchr($name, '.'), 1);
+                                        switch(strtolower($ext)) {
+                                                case 'jpg':
+                                                case 'jpeg':
+                                                case 'png':
+                                                case 'gif':
+                                                case 'png':
+                                                case 'doc':
+                                                case 'txt':
+                                                        move_uploaded_file($tmp_name, "$uploads_dir/$name");
+                                                        $image = GlobalFunctions::uploadFiles ( $name, APPLICATION_PATH . '/../public/uploads/content/' . date ( 'Y' ) . '/' . date ( 'm' ) . '/' );
+                                                        $image_path = date ( 'Y' ) . '/' . date ( 'm' ) . '/' . $image;
+                                                        
+                                                        $content_field_obj = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj->field_id=2;
+                                                        $content_field_obj->content_id=$multipleId[$key]['id'];
+                                                        $content_field_obj->value=$picture_foot;
+                                                        $saved_content_field = $content_field->save ( 'wc_content_field', $content_field_obj );
+                                                        $content_field_obj2 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj2->field_id=3;
+                                                        $content_field_obj2->content_id=$multipleId[$key]['id'];
+                                                        $content_field_obj2->value=$description;
+                                                        $saved_content_field2 = $content_field->save ( 'wc_content_field', $content_field_obj2 );
+                                                        $content_field_obj3 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj3->field_id=4;
+                                                        $content_field_obj3->content_id=$multipleId[$key]['id'];
+                                                        $content_field_obj3->value=$target;
+                                                        $saved_content_field3 = $content_field->save ( 'wc_content_field', $content_field_obj3 );
+                                                        $content_field_obj4 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj4->field_id=5;
+                                                        $content_field_obj4->content_id=$multipleId[$key] ['id'];
+                                                        $content_field_obj4->value=$link;
+                                                        $saved_content_field4 = $content_field->save ( 'wc_content_field', $content_field_obj4 );
+                                                        $content_field_obj8 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj8->field_id=6;
+                                                        $content_field_obj8->content_id=$multipleId[$key] ['id'];
+                                                        $content_field_obj8->value=  $image_path;
+                                                        $saved_content_field8 = $content_field->save ( 'wc_content_field', $content_field_obj8 );                                                        $content_field_obj5 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj5->field_id=7;
+                                                        $content_field_obj5->content_id=$multipleId[$key]['id'];
+                                                        $content_field_obj5->value=$format;
+                                                        $saved_content_field5 = $content_field->save ( 'wc_content_field', $content_field_obj5 );
+                                                        $content_field_obj6 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj6->field_id=8;
+                                                        $content_field_obj6->content_id=$multipleId[$key]['id'];
+                                                        $content_field_obj6->value= $save_image;
+                                                        $saved_content_field6 = $content_field->save ( 'wc_content_field', $content_field_obj6 );
+                                                        $content_field_obj7 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj7->field_id=9;
+                                                        $content_field_obj7->content_id=$multipleId[$key] ['id'];
+                                                        $content_field_obj7->value= $resizeimg;
+                                                        $saved_content_field7 = $content_field->save ( 'wc_content_field', $content_field_obj7 );
+                                                        $content_field_obj9 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj9->field_id=36;
+                                                        $content_field_obj9->content_id=$multipleId[$key] ['id'];
+                                                        $content_field_obj9->value= $watermark;
+                                                        $saved_content_field9 = $content_field->save ( 'wc_content_field', $content_field_obj9 );
+                                                        $content_field_obj10 = $content_field->getNewRow ( 'wc_content_field' );
+                                                        $content_field_obj10->field_id=37;
+                                                        $content_field_obj10->content_id=$multipleId[$key] ['id'];
+                                                        $content_field_obj10->value= $watermarkposition;
+                                                        $saved_content_field10 = $content_field->save ( 'wc_content_field', $content_field_obj10 );
+                                                       
+                                                        GlobalFunctions::removeOldFiles ( $name, APPLICATION_PATH . '/../public/uploads/tmp/' );
 
+                                                        break;
+                                                default:
+                                                        exit();
+                                                        break;
+                                        }
+                                }
+
+                        }
+                } else {                    
 			foreach ( $array_foreach as $fields ) 
 			{			
 				$content_field = new Core_Model_ContentField ();
@@ -676,10 +823,13 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 						}
 					} else if (str_replace ( ' ', '_', strtolower ( $fields->name ) ) == 'html_code'){
 						$content_field_obj->value = utf8_decode( $formData [str_replace ( ' ', '_', strtolower ( $fields->name ) )] );
+                                        //for carrusel
 					}else if ($fields->type == 'select_images') {
 
 						$uploads_dir = APPLICATION_PATH . "/../public/uploads/tmp/";
 						$value = '';
+                                                $current_images_order = $formData['images_order'];
+                                                $content_field_obj->value =  $current_images_order;
 
 						if(count($_FILES["Filedata"]["error"]) > 0){
 							if(count($_FILES["Filedata"]["error"]) < 2) {
@@ -696,10 +846,9 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 									case 'doc':
 									case 'txt':
 										
-										move_uploaded_file($tmp_name, $uploads_dir."/".$name);
-										
+										move_uploaded_file($tmp_name, $uploads_dir."/".$name);										
 										$img = GlobalFunctions::uploadFiles ($name , APPLICATION_PATH . '/../public/uploads/content/' . date ( 'Y' ) . '/' . date ( 'm' ) . '/' );
-										$content_field_obj->value = date ( 'Y' ) . '/' . date ( 'm' ) . '/' . $img;
+										$content_field_obj->value = $current_images_order.date ( 'Y' ) . '/' . date ( 'm' ) . '/' . $img.',';
 										GlobalFunctions::removeOldFiles ( $name, APPLICATION_PATH . '/../public/uploads/tmp/' );
 											
 										break;
@@ -708,7 +857,7 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 										break;
 								}
 							} else {
-
+                                                                //multiple images
 								if($_FILES["Filedata"]["error"])	
 								foreach ($_FILES["Filedata"]["error"] as $key => $error) {
 									if ($error == UPLOAD_ERR_OK) {
@@ -737,22 +886,28 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 									}
 										
 								}
-								$content_field_obj->value = $value;
+								$content_field_obj->value =  $current_images_order.$value;
 							}
 						}
-						
+                                                
+                                                //delete old images from ../uploads/content/...
+                                                $deleted_images = $formData['deleted_images'];
+                                                $array_images = explode ($deleted_images );
+                                                foreach ( $array_images as $ai ) {
+                                                        if (! GlobalFunctions::removeOldFiles ( $ai, APPLICATION_PATH . '/../public/uploads/content/' )) {
+                                                                throw new Zend_Exception ( "CUSTOM_EXCEPTION:FILE NOT DELETED." );
+                                                        }
+                                                }
 						if($formData['id']){
-							if($content_field_obj->value)
-							{
+							if($content_field_obj->value)							{
 								$array_images = explode ( ',', $arr_data [str_replace ( ' ', '_', strtolower ( $fields->name ) )] );
 								if(count($array_images)>1)
-									array_pop ( $array_images );
-	
-								foreach ( $array_images as $ai ) {
-									if (! GlobalFunctions::removeOldFiles ( $ai, APPLICATION_PATH . '/../public/uploads/content/' )) {
-										throw new Zend_Exception ( "CUSTOM_EXCEPTION:FILE NOT DELETED." );
-									}
-								}
+									array_pop ( $array_images );                       
+//								foreach ( $array_images as $ai ) {
+//									if (! GlobalFunctions::removeOldFiles ( $ai, APPLICATION_PATH . '/../public/uploads/content/' )) {
+//										throw new Zend_Exception ( "CUSTOM_EXCEPTION:FILE NOT DELETED." );
+//									}
+//								}
 							}		
 						}						
 							
@@ -815,6 +970,7 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 					}	
 				}
 			}
+                } //end if multiple images
 
 			if ($formData['content_type_id'] == 4) 
 			{
@@ -1032,7 +1188,7 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 		if(isset($arr_data['content_id']))
 			$arr_data['id'] = $arr_data['content_id'];
 		$this->view->preview = $arr_data['id'];
-		
+		$arr_data['watermark_position']='C';
 		foreach ( $data_content_field as $df ) 
 		{
 			$field = new Core_Model_Field ();			
@@ -1047,7 +1203,13 @@ class Core_Content_ContentController extends Zend_Controller_Action {
 			else
 				$arr_data [str_replace ( ' ', '_', strtolower ( $data_field [0]->name ) )] = $df->value;
 		}
-		
+		//for loading current images in a sortable list
+                if($arr_data['content_type_id']==7){
+                    $images = (explode("," ,$arr_data['select_images']));
+                    array_pop($images);
+                    $this->view->images = $images;
+                    $this->view->images_order = $arr_data['select_images'];
+                }
 		$content_form->populate ( $arr_data );
 		$this->view->form = $content_form;
 		$this->view->content_id = $content_id;

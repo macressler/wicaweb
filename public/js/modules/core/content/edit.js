@@ -178,7 +178,12 @@ $(document).ready(function(){
 			//set value on radio aux validation
 			$("input[id^='resizeimg']").bind("click",function(){
 				$("#resizeimg").val($(this).attr('element_value'));
-			});				
+			});
+                        $("#watermarkimg-"+$("#watermarkimg").val()).attr("class",'btn btn-primary active');
+			//set value on radio aux validation
+			$("input[id^='watermarkimg']").bind("click",function(){
+				$("#watermarkimg").val($(this).attr('element_value'));
+			});
 			//validation
 			$("#frmContent").validate({
 				wrapper: "span",
@@ -253,7 +258,18 @@ $(document).ready(function(){
 			$("#frmContent").hide();
 			$("#div_preview").hide();
 			$("#no_flash_player").show();
-		  }		
+		  }
+                  //default watermark pos
+                if($('#watermark_position').val()!=''){
+                        $("[id^='wmk_pos_']").each(function(){
+                                if($(this).attr('pos')==$('#watermark_position').val()){
+                                        $(this).addClass('btn-success');
+                                        $('#img_watermark').parent('div').removeClass('hide');
+                                        setWatermarkPos();
+                                        $(this).click();
+                                }
+                        });
+                }
 		break;
 	
 	
@@ -1469,6 +1485,11 @@ $(document).ready(function(){
 		break;
 		
 	case '7'://Content carrusel
+
+                 $( "#sortable" ).sortable();  
+                 $( "#deleted_array" ).sortable();
+                 $( "#sortable" ).disableSelection();                
+        
 		
 		//check if browser does have flash player 
 		var flashPlayer = function(d,c){try{c=new ActiveXObject(d+c+"."+d+c).GetVariable("$version")}catch(f){c=navigator.plugins[d+" "+c];c=c?c.description:""}return c.match(/\s\d+/)}("Shockwave","Flash");
@@ -1551,10 +1572,33 @@ $(document).ready(function(){
 				//auto height containers
 				autoHeightContent();
 			},5000);
+                
+                //remove an image from the carrusel and register the name of it
+                $("[id^='delete_']").each(function(){
+		    $(this).bind("click", function(){
+                    var current_images = $("#sortable").sortable("toArray"); 
+                    if (current_images.length > 1){
+                        var imageId = this.id.replace("delete_","");                    
+                        var element = document.getElementById(imageId);
+                        jQuery(element).detach().appendTo('#deleted_array')      
+                    } else {
+                        $(this).attr('disabled','disabled');
+                        alert("No puede eliminar todas las imágenes");
+                    }
+                    		
+		                        
+		    });	
+	        });
 
 			
-			//save content through flash
+                //save content through flash
 	    	$("#save_image").bind("click",function(){
+                        //for saving image order
+                        var section_list = $("#sortable").sortable("toArray");           
+			$('#images_order').val(section_list.join(','));
+                        //for deleting images from the directory
+                        var deleted_list= $("#deleted_array").sortable("toArray");           
+			$('#deleted_images').val(deleted_list.join(','));
 	    		if($("#frmContent").valid())
 	    			document.getElementById('agileUploaderSWF').submit();
 	    	});	
@@ -1870,3 +1914,105 @@ function parseresults(data) {
 	}
 }
 
+/**
+ * Add action to the watermark position selector panel
+ */
+function setWatermarkPos(){
+	//default
+	//$('#watermark_pos_container').removeClass('hide');
+	setTimeout("setPosition($('#watermark_position').val())",30);
+	
+	//listeners
+	$("[id^='wmk_pos_']").each(function(){
+		$(this).bind('click',function(){
+                    //alert('entra');
+			clearWatermarkPos();
+			$(this).addClass('btn-success');
+			//save value
+			$('#watermark_position').val($(this).attr('pos'));
+			// change the position of the displayed image
+			var pos = $(this).attr('pos');
+			 setPosition(pos);
+		});
+	});
+}
+
+/**
+ * Add action to the watermark position selector panel
+ */
+function clearWatermarkPos(){
+	$("[id^='wmk_pos_']").each(function(){
+		$(this).removeClass('btn-success');
+	});
+}
+
+/**
+ * Add action to the watermark position selector panel
+ */
+function setPosition(pos){
+	//img size
+	var height = $('#img_watermark').height();
+	var top = (210/2)-(height/2);
+	switch(pos){
+		case 'TL':
+			$('#img_watermark').css('bottom','');
+			$('#img_watermark').css('right','');
+			$('#img_watermark').css('top','0');
+			$('#img_watermark').css('left','0');
+			break;
+		case 'T':
+			$('#img_watermark').css('bottom','');
+			$('#img_watermark').css('right','');
+			$('#img_watermark').css('top','0');
+			$('#img_watermark').css('left','33%');
+			break;
+		case 'TR':
+			$('#img_watermark').css('bottom','');
+			$('#img_watermark').css('left','');
+			$('#img_watermark').css('top','0');
+			$('#img_watermark').css('right','0');
+			break;
+		case 'L':
+			$('#img_watermark').css('bottom','');
+			$('#img_watermark').css('right','');
+			$('#img_watermark').css('top',top+'px');
+			$('#img_watermark').css('left','0');
+			break;
+		case 'C':
+			$('#img_watermark').css('bottom','');
+			$('#img_watermark').css('right','');
+			$('#img_watermark').css('top',top+'px');
+			$('#img_watermark').css('left','33%');
+			break;
+		case 'R':
+			$('#img_watermark').css('bottom','');
+			$('#img_watermark').css('left','');
+			$('#img_watermark').css('top',top+'px');
+			$('#img_watermark').css('right','0');
+			break;
+		case 'BL':
+			$('#img_watermark').css('top','');
+			$('#img_watermark').css('right','');
+			$('#img_watermark').css('bottom','0');
+			$('#img_watermark').css('left','0');
+			break;
+		case 'B':
+			$('#img_watermark').css('top','');
+			$('#img_watermark').css('right','');
+			$('#img_watermark').css('bottom','0');
+			$('#img_watermark').css('left','33%');
+			break;
+		case 'BR':
+			$('#img_watermark').css('top','');
+			$('#img_watermark').css('left','');
+			$('#img_watermark').css('bottom','0');
+			$('#img_watermark').css('right','0');
+			break;
+		default:
+			$('#img_watermark').css('top','');
+			$('#img_watermark').css('left','');
+			$('#img_watermark').css('bottom','0');
+			$('#img_watermark').css('right','0');
+			break;
+	}
+}
