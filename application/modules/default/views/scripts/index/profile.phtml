@@ -59,10 +59,12 @@ $lang = Zend_Registry::get ( 'Zend_Translate' );
                             </div>
             </div>								      												
             </div>	
+            <?php $counter = array ('1'=>'Tipo','2'=>'Nombre', '3'=>'Cédula', '4'=>'Telefono' );
+                  foreach ($counter as $key => $value) { ?>
             <div class="row-fluid">
             <div class="span6">				      							      		
                     <div class="control-group">
-                                    <label class="control-label">* <?php echo $lang->translate('Password'); ?></label>
+                                    <label class="control-label">* <?php echo $lang->translate($value); ?></label>
                                     <div class="controls">
                                             <input type="password" id="public_user_password_'.$area_id.'" name="public_user_password_'.$area_id.'" />
                                     </div>
@@ -76,7 +78,9 @@ $lang = Zend_Registry::get ( 'Zend_Translate' );
                                     </div>
                             </div>
             </div>								      								      												
-            </div>
+            </div>                      
+           <?php }?>
+            
             <div class="row-fluid center">
                     <input class="btn " type="button" id="btn_register_user_'.$area_id.'" name="btn_register_user_'.$area_id.'" value=" <?php echo $lang->translate('Enviar'); ?>" />
                     <input type="hidden" id="website_id" name="website_id" value="'.$front_ids->website_id.'" />
