@@ -9,3 +9,4 @@ extras/documentation
 /docs/db/scripts/basic_data.sql
 application/configs
 /public/installer.lock
+/public/uploads/cache
