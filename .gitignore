@@ -10,3 +10,15 @@ extras/documentation
 application/configs
 /public/installer.lock
 /public/uploads/cache
+
+application/.DS_Store
+
+public/.DS_Store
+
+public/css/.DS_Store
+
+public/images/.DS_Store
+
+public/js/.DS_Store
+
+public/uploads/.DS_Store
